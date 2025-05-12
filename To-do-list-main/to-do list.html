@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { text-align: center; }
+        .container { max-width: 600px; margin: auto; }
+        .input-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .input-section input, .input-section select, .input-section textarea { padding: 10px; width: 45%; }
+        .input-section button { padding: 10px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        .task { display: flex; justify-content: space-between; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .task.completed { background-color: #d3ffd3; text-decoration: line-through; }
+        .task .priority { padding: 5px; margin-right: 10px; font-weight: bold; }
+        .task button { background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+        .task button.complete { background-color: #4CAF50; }
+        .task button.edit { background-color: #ffa500; }
+        .task button.delete { background-color: #f44336; }
+        .task button:hover { background-color: #555; }
+        .task-list { list-style-type: none; padding: 0; }
+        .clear-all { text-align: center; margin-top: 20px; }
+        .search-bar { margin-bottom: 20px; }
+        .warning { color: red; font-weight: bold; }
+        /* Dark mode styles */
+        body.dark-mode { background-color: #2c3e50; color: white; }
+        .container.dark-mode { background-color: #34495e; }
+        .task.dark-mode { background-color: #2c3e50; color: white; }
+        .task.dark-mode button { background-color: #e74c3c; }
+        .task.dark-mode .priority { color: #f39c12; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>My To-Do List</h1>
+
+    <!-- Dark Mode Toggle Button -->
+    <div class="dark-mode-toggle">
+        <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search tasks..." oninput="searchTasks()" />
+    </div>
+
+    <!-- Input Section for Adding Tasks -->
+    <div class="input-section">
+        <input type="text" id="taskTitle" placeholder="Enter task title" />
+        <input type="date" id="taskDueDate" />
+        <input type="time" id="taskDueTime" />
+        <select id="taskPriority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+        </select>
+        <button onclick="addTask()">Add Task</button>
+    </div>
+
+    <ul id="taskList" class="task-list"></ul>
+
+    <div class="clear-all">
+        <button onclick="clearAllTasks()">Clear All Tasks</button>
+    </div>
+</div>
+
+<script>
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    let taskToEdit = null; // To keep track of the task being edited
+
+    // Add new task
+    function addTask() {
+        const title = document.getElementById('taskTitle').value;
+        const dueDate = document.getElementById('taskDueDate').value;
+        const dueTime = document.getElementById('taskDueTime').value;
+        const priority = document.getElementById('taskPriority').value;
+
+        if (title.trim() !== '') {
+            const newTask = {
+                title: title,
+                dueDate: dueDate,
+                dueTime: dueTime,
+                priority: priority,
+                completed: false
+            };
+
+            if (taskToEdit === null) {
+                tasks.push(newTask);
+            } else {
+                tasks[taskToEdit] = newTask;
+                taskToEdit = null; // Reset edit mode
+            }
+
+            updateLocalStorage();
+            displayTasks();
+        }
+
+        // Clear the input fields
+        document.getElementById('taskTitle').value = '';
+        document.getElementById('taskDueDate').value = '';
+        document.getElementById('taskDueTime').value = '';
+        document.getElementById('taskPriority').value = 'Low';
+    }
+
+    // Toggle task completion
+    function toggleCompletion(index) {
+        tasks[index].completed = !tasks[index].completed;
+        updateLocalStorage();
+        displayTasks();
+    }
+
+    // Delete task
+    function deleteTask(index) {
+        tasks.splice(index, 1);
+        updateLocalStorage();
+        displayTasks();
+    }
+
+    // Clear all tasks
+    function clearAllTasks() {
+        tasks = [];
+        updateLocalStorage();
+        displayTasks();
+    }
+
+    // Update local storage with tasks
+    function updateLocalStorage() {
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    // Display tasks on the page
+    function displayTasks() {
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = ''; // Clear existing tasks
+
+        tasks.forEach((task, index) => {
+            const taskItem = document.createElement('li');
+            taskItem.className = 'task ' + (task.completed ? 'completed' : '');
+            taskItem.innerHTML = `
+                <span class="priority" style="color: ${task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'orange' : 'green'};">${task.priority}</span>
+                <span>${task.title}</span>
+                <span>Due: ${task.dueDate} ${task.dueTime ? 'at ' + task.dueTime : ''}</span>
+                <div>
+                    <button class="complete" onclick="toggleCompletion(${index})">${task.completed ? 'Undo' : 'Complete'}</button>
+                    <button class="edit" onclick="editTask(${index})">Edit</button>
+                    <button class="delete" onclick="deleteTask(${index})">Delete</button>
+                </div>
+            `;
+            taskList.appendChild(taskItem);
+        });
+    }
+
+    // Edit task
+    function editTask(index) {
+        const task = tasks[index];
+        taskToEdit = index;
+        document.getElementById('taskTitle').value = task.title;
+        document.getElementById('taskDueDate').value = task.dueDate;
+        document.getElementById('taskDueTime').value = task.dueTime;
+        document.getElementById('taskPriority').value = task.priority;
+    }
+
+    // Search tasks based on title
+    function searchTasks() {
+        const searchValue = document.getElementById('searchInput').value.toLowerCase();
+        const filteredTasks = tasks.filter(task => task.title.toLowerCase().includes(searchValue));
+        displayFilteredTasks(filteredTasks);
+    }
+
+    // Display filtered tasks
+    function displayFilteredTasks(filteredTasks) {
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
+
+        filteredTasks.forEach((task, index) => {
+            const taskItem = document.createElement('li');
+            taskItem.className = 'task ' + (task.completed ? 'completed' : '');
+            taskItem.innerHTML = `
+                <span class="priority" style="color: ${task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'orange' : 'green'};">${task.priority}</span>
+                <span>${task.title}</span>
+                <span>Due: ${task.dueDate} ${task.dueTime ? 'at ' + task.dueTime : ''}</span>
+                <div>
+                    <button class="complete" onclick="toggleCompletion(${index})">${task.completed ? 'Undo' : 'Complete'}</button>
+                    <button class="edit" onclick="editTask(${index})">Edit</button>
+                    <button class="delete" onclick="deleteTask(${index})">Delete</button>
+                </div>
+            `;
+            taskList.appendChild(taskItem);
+        });
+    }
+
+    // Toggle Dark Mode
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        document.querySelector('.container').classList.toggle('dark-mode');
+        const taskItems = document.querySelectorAll('.task');
+        taskItems.forEach(item => item.classList.toggle('dark-mode'));
+    }
+
+    // Initial task display
+    displayTasks();
+</script>
+
+</body>
+</html>
